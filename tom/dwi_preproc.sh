@@ -27,15 +27,6 @@ ${bids_dir}/${subjName}_ses-${ses}_acq-*AP_dwi.bval \
 ${bids_dir}/${subjName}_ses-${ses}_dwi.mif 
 
 
-#do this for each participant and run
-
-#relabel bval, bvec files so easy to read
-
-#mv sub-CON02_ses-preop_acq-AP_dwi.bvec sub-02_AP.bvec
-#mv sub-CON02_ses-preop_acq-AP_dwi.bval sub-02_AP.bval
-#mv sub-CON02_ses-preop_acq-PA_dwi.bvec sub-02_PA.bvec
-#mv sub-CON02_ses-preop_acq-PA_dwi.bval sub-02_PA.bval
-
 #check the scan information using
 
 mrinfo ${bids_dir}/${subjName}_ses-${ses}_dwi.mif  
@@ -67,13 +58,10 @@ mrinfo ${bids_dir}/${subjName}_ses-${ses}_dwi.mif
 # mrtrix_version:    3.0.2
 
 #checking file sizes 
-
 #mrinfo -size sub-02_dwi.mif | awk '{print $4}'
 #awk '{print NF; exit}' sub-02_AP.bvec
 #awk '{print NF; exit}' sub-02_AP.bval
-
 #time to start preprocessing. the first step is to denoise the data
-
 dwidenoise ${bids_dir}/${subjName}_ses-${ses}_dwi.mif \
 ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
 -noise noise.mif  #~3-4mins
@@ -83,52 +71,40 @@ ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
 #indicate that some part of the anatomy was disproportionaly affected by an artifact or distortion
 # using mrcalc calculate the residuals - you use the dwi image, and subract the denoised image
 #then view the image using mrview. It should be a homogenous grey with no distinct image of the brain.
-
-
 mrcalc ${bids_dir}/${subjName}_ses-${ses}_dwi.mif \
 ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
 -subtract ${bids_dir}/${subjName}_ses-${ses}_residual.mif 
-
 #view distortions (need to do this in command line)
 #mrview ${bids_dir}/${subjName}_ses-${ses}_residual.mif
-
 #Converting the PA Images:
 #your imaging data should have two sets of files AP (primary phase encoding direction) and PA (reverse phase encoding direction)
 #the reverse PA scan is used to unwarp the AP scans. we use both to create and average 
 #and cancel out the effects of warping
-
 #first convert PA to .mif format and add bvals, bvecs into the header images.
-  
 mrconvert ${bids_dir}/${subjName}_ses-${ses}_acq-*PA_dwi.nii.gz \
 ${bids_dir}/${subjName}_ses-${ses}_PA.mif
-
 #next we extract the bvalues from the primany pahse encoded image and the combine the two 
 #using the command mrcat
 #Extracting b0 images from the AP dataset, and concatenating the b0 images across both AP and PA images:
-
 dwiextract ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
 -bzero | mrmath - mean ${bids_dir}/${subjName}_ses-${ses}_mean_b0_AP.mif \
 -axis 3
-
 #concatenates the mean b0 images from both phase encoding positions AP & PA 
 mrcat ${bids_dir}/${subjName}_ses-${ses}_mean_b0_AP.mif \
 ${bids_dir}/${subjName}_ses-${ses}_PA.mif \
 -axis 3 \
 ${bids_dir}/${subjName}_ses-${ses}_B0_pair.mif
-
 mrcat ${bids_dir}/${subjName}_ses-${ses}_PA.mif \
 ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
 ${bids_dir}/${subjName}_ses-${ses}_concat.mif 
 
 #now the data is ready for the main preprocessing step which uses different commannds 
 #to unwarp the data and remove eddy currents
-
 #Preprocessing with dwifslpreproc:
 # -pe_dir AP says the primany phase encoding direction is AP -rpe_pair and -se_epi say that the next file is a spin echo 
 #image acquired with reverse phase encoded directions. -eddy_options allows selection of many options --slm-linear (better for less than 60 directions)
 # and --data_is_shelled is for images collected with more than one b value
 # this step can take several hours depending on your computer 
-
 dwifslpreproc sub-02_den.mif \
 sub-02_den_preproc.mif \
 -nocleanup \
@@ -136,6 +112,5 @@ sub-02_den_preproc.mif \
 -rpe_pair \
 -se_epi b0_pair.mif \
 -eddy_options " --slm=linear --data_is_shelled"
-
 done 
 done 
