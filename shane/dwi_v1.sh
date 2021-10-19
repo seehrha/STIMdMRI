@@ -7,20 +7,20 @@
 
 #step one - make .mif files (that stitches together bval, bvec files to the .nii)
 
-mrconvert sub-CON02_ses-preop_acq-AP_dwi.nii.gz sub-02_dwi.mif -fslgrad sub-CON02_ses-preop_acq-AP_dwi.bvec sub-CON02_ses-preop_acq-AP_dwi.bval 
+mrconvert sub-048_ses-02_acq-b25001000d060306orig_dir-AP_dwi.nii.gz -fslgrad sub-048_ses-02_acq-b25001000d060306orig_dir-AP_dwi.bvec sub-048_ses-02_acq-b25001000d060306orig_dir-AP_dwi.bval sub-048_dwi.mif 
 
 #do this for each participant and run
 
 #relabel bval, bvec files so easy to read
 
-mv sub-CON02_ses-preop_acq-AP_dwi.bvec sub-02_AP.bvec
-mv sub-CON02_ses-preop_acq-AP_dwi.bval sub-02_AP.bval
-mv sub-CON02_ses-preop_acq-PA_dwi.bvec sub-02_PA.bvec
-mv sub-CON02_ses-preop_acq-PA_dwi.bval sub-02_PA.bval
+mv sub-048_ses-02_acq-b25001000d060306orig_dir-AP_dwi.bvec sub-048_AP.bvec
+mv sub-048_ses-02_acq-b25001000d060306orig_dir-AP_dwi.bval sub-048_AP.bval
+mv sub-048_ses-02_acq-b0orig_dir-PA_dwi.bvec sub-048_PA.bvec
+mv sub-048_ses-02_acq-b0orig_dir-PA_dwi.bval sub-048_PA.bval
 
 #check the scan information using
 
-mrinfo sub-02_dwi.mif 
+mrinfo sub-048_dwi.mif 
 
 #it will look something like this. check the dimenstions, the first 3 are voxels the 
 #fourth is time, or the number of volumes. Each file, the mifs, .nii, .bval, bvec, need to have specific values that match the 
@@ -50,13 +50,13 @@ mrinfo sub-02_dwi.mif
 
 #checking file sizes 
 
-mrinfo -size sub-02_dwi.mif | awk '{print $4}'
-awk '{print NF; exit}' sub-02_AP.bvec
-awk '{print NF; exit}' sub-02_AP.bval
+mrinfo -size sub-048_dwi.mif | awk '{print $4}'
+awk '{print NF; exit}' sub-048_AP.bvec
+awk '{print NF; exit}' sub-048_AP.bval
 
 #time to start preprocessing. the first step is to denoise the data
 
-dwidenoise sub-02_dwi.mif sub-02_den.mif -noise noise.mif  #~3-4mins
+dwidenoise sub-048_dwi.mif sub-048_den.mif -noise noise.mif  #~3-4mins
 
 #only takes a few minutes
 #now check if the residuals load onto any part of the anatomy. it may 
@@ -65,7 +65,7 @@ dwidenoise sub-02_dwi.mif sub-02_den.mif -noise noise.mif  #~3-4mins
 #then view the image using mrview. It should be a homogenous grey with no distinct image of the brain.
 
 
-mrcalc sub-02_dwi.mif sub-02_den.mif -subtract residual.mif
+mrcalc sub-048_dwi.mif sub-048_den.mif -subtract residual.mif
 
 #view distortions
 mrview residual.mif
@@ -77,22 +77,24 @@ mrview residual.mif
 
 #first convert PA to .mif format and add bvals, bvecs into the header images.
   
-mrconvert sub-CON02_ses-preop_acq-PA_dwi.nii.gz PA.mif
+mrconvert sub-048_ses-02_acq-b0orig_dir-PA_dwi.nii.gz PA.mif
 
 #takes the two b0 images and take the mrmath command takes the mean of the two images
 #and creates a mean b0.mif file
-mrconvert PA.mif -fslgrad sub-02_PA.bvec sub-02_PA.bval - | mrmath - mean mean_b0_PA.mif -axis 3
+#dont need to do this for PA - because there is only one.
+#mrconvert PA.mif -fslgrad sub-048_PA.bvec sub-048_PA.bval - | mrmath - mean mean_b0_PA.mif -axis 3
 
 #next we extract the bvalues from the primany pahse encoded image and the combine the two 
 #using the command mrcat
 
 #Extracting b0 images from the AP dataset, and concatenating the b0 images across both AP and PA images:
   
-dwiextract sub-02_den.mif - -bzero | mrmath - mean mean_b0_AP.mif -axis 3
+dwiextract sub-048_den.mif - -bzero | mrmath - mean mean_b0_AP.mif -axis 3
 
 #concatenates the mean b0 images from both phase encoding positions AP & PA 
-mrcat mean_b0_AP.mif mean_b0_PA.mif -axis 3 b0_pair.mif
+mrcat mean_b0_AP.mif PA.mif -axis 3 b0_pair.mif
 
+mrcat PA.mif sub-048_den.mif sub-048_concat.mif 
 #now the data is ready for the main preprocessing step which uses different commannds 
 #to unwarp the data and remove eddy currents
 
@@ -102,7 +104,7 @@ mrcat mean_b0_AP.mif mean_b0_PA.mif -axis 3 b0_pair.mif
 # and --data_is_shelled is for images collected with more than one b value
 # this step can take several hours depending on your computer 
 
-dwifslpreproc sub-02_den.mif sub-02_den_preproc.mif -nocleanup -pe_dir AP -rpe_pair -se_epi b0_pair.mif -eddy_options " --slm=linear --data_is_shelled"
+dwifslpreproc sub-048_den.mif sub-048_den_preproc.mif -nocleanup -pe_dir AP -rpe_pair -se_epi b0_pair.mif -eddy_options " --slm=linear --data_is_shelled"
 
 
 
