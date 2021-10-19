@@ -89,8 +89,8 @@ mrcalc ${bids_dir}/${subjName}_ses-${ses}_dwi.mif \
 ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
 -subtract ${bids_dir}/${subjName}_ses-${ses}_residual.mif 
 
-#view distortions
-mrview ${bids_dir}/${subjName}_ses-${ses}_residual.mif
+#view distortions (need to do this in command line)
+#mrview ${bids_dir}/${subjName}_ses-${ses}_residual.mif
 
 #Converting the PA Images:
 #your imaging data should have two sets of files AP (primary phase encoding direction) and PA (reverse phase encoding direction)
@@ -99,21 +99,26 @@ mrview ${bids_dir}/${subjName}_ses-${ses}_residual.mif
 
 #first convert PA to .mif format and add bvals, bvecs into the header images.
   
-mrconvert sub-CON02_ses-preop_acq-PA_dwi.nii.gz PA.mif
-
-#takes the two b0 images and take the mrmath command takes the mean of the two images
-#and creates a mean b0.mif file
-mrconvert PA.mif -fslgrad sub-02_PA.bvec sub-02_PA.bval - | mrmath - mean mean_b0_PA.mif -axis 3
+mrconvert ${bids_dir}/${subjName}_ses-${ses}_acq-*PA_dwi.nii.gz \
+${bids_dir}/${subjName}_ses-${ses}_PA.mif
 
 #next we extract the bvalues from the primany pahse encoded image and the combine the two 
 #using the command mrcat
-
 #Extracting b0 images from the AP dataset, and concatenating the b0 images across both AP and PA images:
-  
-dwiextract sub-02_den.mif -bzero | mrmath - mean mean_b0_AP.mif -axis 3
+
+dwiextract ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
+-bzero | mrmath - mean ${bids_dir}/${subjName}_ses-${ses}_mean_b0_AP.mif \
+-axis 3
 
 #concatenates the mean b0 images from both phase encoding positions AP & PA 
-mrcat mean_b0_AP.mif mean_b0_PA.mif -axis 3 b0_pair.mif
+mrcat ${bids_dir}/${subjName}_ses-${ses}_mean_b0_AP.mif \
+${bids_dir}/${subjName}_ses-${ses}_PA.mif \
+-axis 3 \
+${bids_dir}/${subjName}_ses-${ses}_B0_pair.mif
+
+mrcat ${bids_dir}/${subjName}_ses-${ses}_PA.mif \
+${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
+${bids_dir}/${subjName}_ses-${ses}_concat.mif 
 
 #now the data is ready for the main preprocessing step which uses different commannds 
 #to unwarp the data and remove eddy currents
@@ -124,4 +129,13 @@ mrcat mean_b0_AP.mif mean_b0_PA.mif -axis 3 b0_pair.mif
 # and --data_is_shelled is for images collected with more than one b value
 # this step can take several hours depending on your computer 
 
-dwifslpreproc sub-02_den.mif sub-02_den_preproc.mif -nocleanup -pe_dir AP -rpe_pair -se_epi b0_pair.mif -eddy_options " --slm=linear --data_is_shelled"
+dwifslpreproc sub-02_den.mif \
+sub-02_den_preproc.mif \
+-nocleanup \
+-pe_dir AP \
+-rpe_pair \
+-se_epi b0_pair.mif \
+-eddy_options " --slm=linear --data_is_shelled"
+
+done 
+done 

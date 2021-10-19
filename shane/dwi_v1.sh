@@ -64,7 +64,6 @@ dwidenoise sub-048_dwi.mif sub-048_den.mif -noise noise.mif  #~3-4mins
 # using mrcalc calculate the residuals - you use the dwi image, and subract the denoised image
 #then view the image using mrview. It should be a homogenous grey with no distinct image of the brain.
 
-
 mrcalc sub-048_dwi.mif sub-048_den.mif -subtract residual.mif
 
 #view distortions
