@@ -105,55 +105,72 @@ ${bids_dir}/${subjName}_ses-${ses}_concat.mif
 #image acquired with reverse phase encoded directions. -eddy_options allows selection of many options --slm-linear (better for less than 60 directions)
 # and --data_is_shelled is for images collected with more than one b value
 # this step can take several hours depending on your computer 
-dwifslpreproc sub-02_den.mif \
-sub-02_den_preproc.mif \
+dwifslpreproc ${bids_dir}/${subjName}_ses-${ses}_dwi_den.mif \
+${bids_dir}/${subjName}_ses-${ses}_den_preproc.mif \
 -nocleanup \
 -pe_dir AP \
 -rpe_pair \
--se_epi b0_pair.mif \
+-se_epi ${bids_dir}/${subjName}_ses-${ses}_B0_pair.mif \
 -eddy_options " --slm=linear --data_is_shelled"
 
 #Checking the preprocessing output:
 
 #mrview sub-048_den_preproc.mif -overlay.load sub-048_dwi.mif
 
-
 #Bias-correcting the data and creating a mask:
 
-dwibiascorrect ants sub-048_den_preproc.mif sub-048_den_preproc_unbiased.mif -bias bias.mif
-dwi2mask sub-048_den_preproc_unbiased.mif mask.mif
-mrview mask.mif
+dwibiascorrect ants ${bids_dir}/${subjName}_ses-${ses}_den_preproc.mif \
+${bids_dir}/${subjName}_ses-${ses}_den_preproc_unbiased.mif \
+-bias ${bids_dir}/${subjName}_ses-${ses}_bias.mif \
+dwi2mask ${bids_dir}/${subjName}_ses-${ses}_den_preproc_unbiased.mif \
+${bids_dir}/${subjName}_ses-${ses}_mask.mif 
+
+#mrview mask.mif
 
 #Estimating the Basis Functions:
-
-dwi2response dhollander sub-048_den_preproc_unbiased.mif wm.txt gm.txt csf.txt -voxels voxels.mif
-
+dwi2response dhollander ${bids_dir}/${subjName}_ses-${ses}_den_preproc_unbiased.mif \
+${bids_dir}/${subjName}_ses-${ses}_wm.txt \
+${bids_dir}/${subjName}_ses-${ses}_gm.txt \
+${bids_dir}/${subjName}_ses-${ses}_csf.txt \
+-voxels ${bids_dir}/${subjName}_ses-${ses}_voxels.mif
 
 #Viewing the Basis Functions:
 
-mrview sub-048_den_preproc_unbiased.mif -overlay.load voxels.mif
-shview wm.txt
-shview gm.txt
-shview csf.txt
-
-
+#mrview sub-048_den_preproc_unbiased.mif -overlay.load voxels.mif
+#shview wm.txt
+#shview gm.txt
+#shview csf.txt
 #Applying the basis functions to the diffusion data:
 
-dwi2fod msmt_csd sub-048_den_preproc_unbiased.mif -mask mask.mif wm.txt wmfod.mif gm.txt gmfod.mif csf.txt csffod.mif
+dwi2fod msmt_csd \
+${bids_dir}/${subjName}_ses-${ses}_den_preproc_unbiased.mif \
+-mask ${bids_dir}/${subjName}_ses-${ses}_mask.mif \
+${bids_dir}/${subjName}_ses-${ses}_wm.txt \
+${bids_dir}/${subjName}_ses-${ses}_wmfod.mif \
+${bids_dir}/${subjName}_ses-${ses}_gm.txt \
+${bids_dir}/${subjName}_ses-${ses}_gmfod.mif \
+${bids_dir}/${subjName}_ses-${ses}_csf.txt \
+${bids_dir}/${subjName}_ses-${ses}_csffod.mif
 
 
 #Concatenating the FODs:
 
-mrconvert -coord 3 0 wmfod.mif - | mrcat csffod.mif gmfod.mif - vf.mif
-
+mrconvert -coord 3 0 ${bids_dir}/${subjName}_ses-${ses}_wmfod.mif - | mrcat ${bids_dir}/${subjName}_ses-${ses}_csffod.mif \
+${bids_dir}/${subjName}_ses-${ses}_gmfod.mif - ${bids_dir}/${subjName}_ses-${ses}_vf.mif
 
 #Viewing the FODs:
 
-mrview vf.mif -odf.load_sh wmfod.mif
+#mrview vf.mif -odf.load_sh wmfod.mif
 
 
 #Normalizing the FODs:
 
-mtnormalise wmfod.mif wmfod_norm.mif gmfod.mif gmfod_norm.mif csffod.mif csffod_norm.mif -mask mask.mif
+mtnormalise ${bids_dir}/${subjName}_ses-${ses}_wmfod.mif \
+${bids_dir}/${subjName}_ses-${ses}_wmfod_norm.mif \
+${bids_dir}/${subjName}_ses-${ses}_gmfod.mif \
+${bids_dir}/${subjName}_ses-${ses}_gmfod_norm.mif \
+${bids_dir}/${subjName}_ses-${ses}_csffod.mif \
+${bids_dir}/${subjName}_ses-${ses}_csffod_norm.mif \
+-mask ${bids_dir}/${subjName}_ses-${ses}_mask.mif
 done 
 done 
