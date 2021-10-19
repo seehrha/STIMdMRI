@@ -6,13 +6,13 @@
 
 cd /scratch/${USER}/DWI_prep
 
-output_dir=/path/to/output_dir
+output_dir=/scratch/${USER}/DWI_prep_output
 
-subjnames=/path/to/subjnames.txt
+subjnames=~/STIMdMRI/tom/subjnames.txt
 for subjName in `cat ${subjnames}` ; do 
 for ses in 02 03 ; do 
     ml mrtrix3
-    bids_dir=/path/to/bids/${subjName}/ses-${ses}/
+    bids_dir=/RDS/Q1876/data/bids/${subjName}/ses-${ses}/
 
 # data needs to be in bids format. DTI images need both forward and reverse encoded images
 #generally AP and PA
@@ -112,5 +112,48 @@ sub-02_den_preproc.mif \
 -rpe_pair \
 -se_epi b0_pair.mif \
 -eddy_options " --slm=linear --data_is_shelled"
+
+#Checking the preprocessing output:
+
+#mrview sub-048_den_preproc.mif -overlay.load sub-048_dwi.mif
+
+
+#Bias-correcting the data and creating a mask:
+
+dwibiascorrect ants sub-048_den_preproc.mif sub-048_den_preproc_unbiased.mif -bias bias.mif
+dwi2mask sub-048_den_preproc_unbiased.mif mask.mif
+mrview mask.mif
+
+#Estimating the Basis Functions:
+
+dwi2response dhollander sub-048_den_preproc_unbiased.mif wm.txt gm.txt csf.txt -voxels voxels.mif
+
+
+#Viewing the Basis Functions:
+
+mrview sub-048_den_preproc_unbiased.mif -overlay.load voxels.mif
+shview wm.txt
+shview gm.txt
+shview csf.txt
+
+
+#Applying the basis functions to the diffusion data:
+
+dwi2fod msmt_csd sub-048_den_preproc_unbiased.mif -mask mask.mif wm.txt wmfod.mif gm.txt gmfod.mif csf.txt csffod.mif
+
+
+#Concatenating the FODs:
+
+mrconvert -coord 3 0 wmfod.mif - | mrcat csffod.mif gmfod.mif - vf.mif
+
+
+#Viewing the FODs:
+
+mrview vf.mif -odf.load_sh wmfod.mif
+
+
+#Normalizing the FODs:
+
+mtnormalise wmfod.mif wmfod_norm.mif gmfod.mif gmfod_norm.mif csffod.mif csffod_norm.mif -mask mask.mif
 done 
 done 
